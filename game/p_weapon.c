@@ -818,6 +818,17 @@ void Blaster_Fire (edict_t *ent, vec3_t g_offset, int damage, qboolean hyper, in
 	vec3_t	forward, right;
 	vec3_t	start;
 	vec3_t	offset;
+	
+	float		angle;
+	float		sy, cy, sp, cp;
+
+	vec3_t		from;
+	vec3_t		end;
+	trace_t		tr;
+	edict_t* ignore;
+	int			mask;
+	qboolean	water;
+	
 
 	if (is_quad)
 		damage *= 4;
@@ -829,7 +840,78 @@ void Blaster_Fire (edict_t *ent, vec3_t g_offset, int damage, qboolean hyper, in
 	VectorScale (forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	fire_blaster (ent, start, forward, damage, 1000, effect, hyper);
+	if (hyper) {
+		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
+
+		angle = ent->client->v_angle[PITCH] * (M_PI * 2 / 360);
+		sp = sin(angle + (M_PI) / 180.0F);
+		cp = cos(angle + (M_PI) / 180.0F);
+		angle = ent->client->v_angle[YAW] * (M_PI * 2 / 360);
+
+		VectorNormalize(right);
+		VectorScale(right, 4, right);
+		VectorAdd(start, right, start);
+		sy = sin(angle + ((-5.0F * M_PI) / 180.0F));
+		cy = cos(angle + ((-5.0F * M_PI) / 180.0F));
+		forward[0] = cp * cy;
+		forward[1] = cp * sy;
+		forward[2] = -sp;
+		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
+
+		VectorNormalize(right);
+		VectorScale(right, -8, right);
+		VectorAdd(start, right, start);
+		sy = sin(angle + ((10.0F * M_PI) / 180.0F));
+		cy = cos(angle + ((10.0F * M_PI) / 180.0F));
+		forward[0] = cp * cy;
+		forward[1] = cp * sy;
+		forward[2] = -sp;
+		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
+	}
+	else {
+		VectorMA(start, 8192, forward, end);
+		VectorCopy(start, from);
+		ignore = ent;
+		water = false;
+		mask = MASK_SHOT | CONTENTS_SLIME | CONTENTS_LAVA;
+		while (ignore)
+		{
+			tr = gi.trace(from, NULL, NULL, end, ignore, mask);
+
+			if (tr.contents & (CONTENTS_SLIME | CONTENTS_LAVA))
+			{
+				mask &= ~(CONTENTS_SLIME | CONTENTS_LAVA);
+				water = true;
+			}
+			else
+			{
+				ignore = NULL;
+
+				if ((tr.ent != ent) && (tr.ent->takedamage)) {
+					if (tr.ent->svflags & SVF_MONSTER)
+						VectorSet(ent->s.origin, tr.ent->s.origin[0], tr.ent->s.origin[1], tr.ent->s.origin[2]);
+					T_Damage(tr.ent, ent, ent, forward, tr.endpos, tr.plane.normal, 1500, 200, 0, MOD_RAILGUN);
+				}
+
+			}
+		}
+		// send gun puff / flash
+		gi.WriteByte(svc_temp_entity);
+		gi.WriteByte(TE_RAILTRAIL);
+		gi.WritePosition(start);
+		gi.WritePosition(tr.endpos);
+		gi.multicast(ent->s.origin, MULTICAST_PHS);
+		//	gi.multicast (start, MULTICAST_PHS);
+		if (water)
+		{
+			gi.WriteByte(svc_temp_entity);
+			gi.WriteByte(TE_RAILTRAIL);
+			gi.WritePosition(start);
+			gi.WritePosition(tr.endpos);
+			gi.multicast(tr.endpos, MULTICAST_PHS);
+		}
+		//teleport player to the spot where the porjectile ceases to be
+	}
 
 	// send muzzle flash
 	gi.WriteByte (svc_muzzleflash);

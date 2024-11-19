@@ -1061,6 +1061,7 @@ struct edict_s
 
 	char		*map;			// target_changelevel
 
+	qboolean	freeze;
 	int			viewheight;		// height above origin where eyesight is determined
 	int			takedamage;
 	int			dmg;

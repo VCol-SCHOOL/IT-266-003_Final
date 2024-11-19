@@ -899,6 +899,12 @@ void Cmd_PlayerList_f(edict_t *ent)
 	gi.cprintf(ent, PRINT_HIGH, "%s", text);
 }
 
+void Cmd_RocketJump_f(edict_t* ent) {
+	vec3_t forward = { 0,0,-1 };
+	if (!ent || ent->health <= 0) return;
+	fire_rocket(ent, ent->s.origin, forward, 0, 1000, 100, 50);
+	
+}
 
 /*
 =================
@@ -987,6 +993,8 @@ void ClientCommand (edict_t *ent)
 		Cmd_Wave_f (ent);
 	else if (Q_stricmp(cmd, "playerlist") == 0)
 		Cmd_PlayerList_f(ent);
+	else if (Q_stricmp(cmd, "rocketjump") == 0)
+		Cmd_RocketJump_f(ent);
 	else	// anything that doesn't match a command will be a chat
 		Cmd_Say_f (ent, false, true);
 }

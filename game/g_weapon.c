@@ -385,7 +385,7 @@ void fire_blaster (edict_t *self, vec3_t start, vec3_t dir, int damage, int spee
 	if (tr.fraction < 1.0)
 	{
 		VectorMA (bolt->s.origin, -10, dir, bolt->s.origin);
-		bolt->touch (bolt, tr.ent, NULL, NULL);
+		bolt->touch(bolt, tr.ent, NULL, NULL);
 	}
 }	
 
@@ -685,8 +685,11 @@ void fire_rail (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int kick
 			else
 				ignore = NULL;
 
-			if ((tr.ent != self) && (tr.ent->takedamage))
-				T_Damage (tr.ent, self, self, aimdir, tr.endpos, tr.plane.normal, damage, kick, 0, MOD_RAILGUN);
+			if ((tr.ent != self) && (tr.ent->takedamage)) {
+				T_Damage(tr.ent, self, self, aimdir, tr.endpos, tr.plane.normal, damage*0.1, kick, 0, MOD_RAILGUN);
+				if (tr.ent->svflags & SVF_MONSTER)
+					tr.ent->freeze = !tr.ent->freeze;
+			}
 		}
 
 		VectorCopy (tr.endpos, from);

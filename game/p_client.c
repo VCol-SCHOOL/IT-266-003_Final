@@ -610,11 +610,30 @@ void InitClientPersistant (gclient_t *client)
 
 	memset (&client->pers, 0, sizeof(client->pers));
 
+	//give weapon on spawn
 	item = FindItem("Blaster");
 	client->pers.selected_item = ITEM_INDEX(item);
 	client->pers.inventory[client->pers.selected_item] = 1;
 
 	client->pers.weapon = item;
+
+	item = FindItem("Railgun");
+	client->pers.selected_item = ITEM_INDEX(item);
+	client->pers.inventory[client->pers.selected_item] = 1;
+
+	client->pers.weapon = item;
+	item = FindItem("Slugs");
+	client->pers.selected_item = ITEM_INDEX(item);
+	client->pers.inventory[client->pers.selected_item] = 100;
+
+	item = FindItem("HyperBlaster");
+	client->pers.selected_item = ITEM_INDEX(item);
+	client->pers.inventory[client->pers.selected_item] = 1;
+
+	client->pers.weapon = item;
+	item = FindItem("Cells");
+	client->pers.selected_item = ITEM_INDEX(item);
+	client->pers.inventory[client->pers.selected_item] = 300;
 
 	client->pers.health			= 100;
 	client->pers.max_health		= 100;
