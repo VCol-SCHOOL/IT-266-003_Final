@@ -544,6 +544,7 @@ M_walkmove
 */
 qboolean M_walkmove (edict_t *ent, float yaw, float dist)
 {
+
 	vec3_t	move;
 	
 	if (!ent->groundentity && !(ent->flags & (FL_FLY|FL_SWIM)))

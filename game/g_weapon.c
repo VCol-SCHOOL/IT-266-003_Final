@@ -397,6 +397,10 @@ fire_grenade
 */
 static void Grenade_Explode (edict_t *ent)
 {
+	if (ent->owner->client->bTimer != 0) {
+		ent->nextthink = level.time + .1;
+		return;
+	}
 	vec3_t		origin;
 	int			mod;
 
@@ -428,6 +432,7 @@ static void Grenade_Explode (edict_t *ent)
 		mod = MOD_HG_SPLASH;
 	else
 		mod = MOD_G_SPLASH;
+
 	T_RadiusDamage(ent, ent->owner, ent->dmg, ent->enemy, ent->dmg_radius, mod);
 
 	VectorMA (ent->s.origin, -0.02, ent->velocity, origin);
@@ -512,7 +517,6 @@ void fire_grenade (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int s
 	grenade->dmg = damage;
 	grenade->dmg_radius = damage_radius;
 	grenade->classname = "grenade";
-
 	gi.linkentity (grenade);
 }
 
@@ -545,14 +549,15 @@ void fire_grenade2 (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int 
 	grenade->dmg = damage;
 	grenade->dmg_radius = damage_radius;
 	grenade->classname = "hgrenade";
+	
 	if (held)
 		grenade->spawnflags = 3;
 	else
 		grenade->spawnflags = 1;
 	grenade->s.sound = gi.soundindex("weapons/hgrenc1b.wav");
 
-	if (timer <= 0.0)
-		Grenade_Explode (grenade);
+	if (timer < 0.0) //change for turns
+		Grenade_Explode(grenade);
 	else
 	{
 		gi.sound (self, CHAN_WEAPON, gi.soundindex ("weapons/hgrent1a.wav"), 1, ATTN_NORM, 0);
@@ -571,8 +576,8 @@ void rocket_touch (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *su
 	vec3_t		origin;
 	int			n;
 
-	if (other == ent->owner)
-		return;
+	//if (other == ent->owner)
+		//return;
 
 	if (surf && (surf->flags & SURF_SKY))
 	{
@@ -687,8 +692,10 @@ void fire_rail (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int kick
 
 			if ((tr.ent != self) && (tr.ent->takedamage)) {
 				T_Damage(tr.ent, self, self, aimdir, tr.endpos, tr.plane.normal, damage*0.1, kick, 0, MOD_RAILGUN);
-				if (tr.ent->svflags & SVF_MONSTER)
+				if (tr.ent->svflags & SVF_MONSTER) {
 					tr.ent->freeze = !tr.ent->freeze;
+					self->freeze = !self->freeze;
+				}
 			}
 		}
 

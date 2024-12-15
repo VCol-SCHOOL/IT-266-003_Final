@@ -302,6 +302,8 @@ Draw help computer.
 void HelpComputer (edict_t *ent)
 {
 	char	string[1024];
+	char	*help1 = "Seek and destroy enemies &\nget to the exit\0";
+	char	*help2 = "tab for stats, fire gun at\nenemy to initate battle\0";
 	char	*sk;
 
 	if (skill->value == 0)
@@ -312,6 +314,8 @@ void HelpComputer (edict_t *ent)
 		sk = "hard";
 	else
 		sk = "hard+";
+
+	
 
 	// send the layout
 	Com_sprintf (string, sizeof(string),
@@ -324,8 +328,8 @@ void HelpComputer (edict_t *ent)
 		"xv 50 yv 172 string2 \"%3i/%3i     %i/%i       %i/%i\" ", 
 		sk,
 		level.level_name,
-		game.helpmessage1,
-		game.helpmessage2,
+		help1,
+		help2,
 		level.killed_monsters, level.total_monsters, 
 		level.found_goals, level.total_goals,
 		level.found_secrets, level.total_secrets);
@@ -501,6 +505,8 @@ void G_SetStats (edict_t *ent)
 			ent->client->ps.stats[STAT_LAYOUTS] |= 1;
 		if (ent->client->showinventory && ent->client->pers.health > 0)
 			ent->client->ps.stats[STAT_LAYOUTS] |= 2;
+		//if (ent->client->showmain)
+			//ent->client->ps.stats[STAT_LAYOUTS] |= 2;
 	}
 
 	//

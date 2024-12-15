@@ -616,8 +616,11 @@ void InitClientPersistant (gclient_t *client)
 	client->pers.inventory[client->pers.selected_item] = 1;
 
 	client->pers.weapon = item;
+	item = FindItem("Bullets");
+	client->pers.selected_item = ITEM_INDEX(item);
+	client->pers.inventory[client->pers.selected_item] = 200;
 
-	item = FindItem("Railgun");
+	/*item = FindItem("Railgun");
 	client->pers.selected_item = ITEM_INDEX(item);
 	client->pers.inventory[client->pers.selected_item] = 1;
 
@@ -633,7 +636,7 @@ void InitClientPersistant (gclient_t *client)
 	client->pers.weapon = item;
 	item = FindItem("Cells");
 	client->pers.selected_item = ITEM_INDEX(item);
-	client->pers.inventory[client->pers.selected_item] = 300;
+	client->pers.inventory[client->pers.selected_item] = 300;*/
 
 	client->pers.health			= 100;
 	client->pers.max_health		= 100;
@@ -644,6 +647,19 @@ void InitClientPersistant (gclient_t *client)
 	client->pers.max_grenades	= 50;
 	client->pers.max_cells		= 200;
 	client->pers.max_slugs		= 50;
+
+	client->pers.attackMod = 0;
+	client->pers.defenseMod = 0;
+	client->pers.exp_points = 80;
+	client->pers.exp_max = 400;
+	client->pers.lv = 1;
+	client->repeatB = 100;
+	client->repeatL = 120;
+	client->bTimer = -1;
+	client->stunTimer = 0;
+	client->virusTimer = 0;
+	client->weakTimer = 0;
+	client->buycode = 0;
 
 	client->pers.connected = true;
 }
@@ -1596,6 +1612,8 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	level.current_entity = ent;
 	client = ent->client;
 
+	//ent->opponent->s.angles[YAW] = 0.998672;
+	
 	if (level.intermissiontime)
 	{
 		client->ps.pmove.pm_type = PM_FREEZE;
@@ -1607,17 +1625,17 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	}
 
 	pm_passent = ent;
-
 	if (ent->client->chase_target) {
 
 		client->resp.cmd_angles[0] = SHORT2ANGLE(ucmd->angles[0]);
 		client->resp.cmd_angles[1] = SHORT2ANGLE(ucmd->angles[1]);
 		client->resp.cmd_angles[2] = SHORT2ANGLE(ucmd->angles[2]);
 
-	} else {
+	}
+	else {
 
 		// set up for pmove
-		memset (&pm, 0, sizeof(pm));
+		memset(&pm, 0, sizeof(pm));
 
 		if (ent->movetype == MOVETYPE_NOCLIP)
 			client->ps.pmove.pm_type = PM_SPECTATOR;
@@ -1625,22 +1643,24 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 			client->ps.pmove.pm_type = PM_GIB;
 		else if (ent->deadflag)
 			client->ps.pmove.pm_type = PM_DEAD;
+		else if (ent->freeze)
+			client->ps.pmove.pm_type = PM_FREEZE;
 		else
 			client->ps.pmove.pm_type = PM_NORMAL;
 
 		client->ps.pmove.gravity = sv_gravity->value;
 		pm.s = client->ps.pmove;
 
-		for (i=0 ; i<3 ; i++)
+		for (i = 0; i < 3; i++)
 		{
-			pm.s.origin[i] = ent->s.origin[i]*8;
-			pm.s.velocity[i] = ent->velocity[i]*8;
+			pm.s.origin[i] = ent->s.origin[i] * 8;
+			pm.s.velocity[i] = ent->velocity[i] * 8;
 		}
 
 		if (memcmp(&client->old_pmove, &pm.s, sizeof(pm.s)))
 		{
 			pm.snapinitial = true;
-	//		gi.dprintf ("pmove changed!\n");
+			//		gi.dprintf ("pmove changed!\n");
 		}
 
 		pm.cmd = *ucmd;
@@ -1649,20 +1669,20 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 		pm.pointcontents = gi.pointcontents;
 
 		// perform a pmove
-		gi.Pmove (&pm);
+		gi.Pmove(&pm);
 
 		// save results of pmove
 		client->ps.pmove = pm.s;
 		client->old_pmove = pm.s;
 
-		for (i=0 ; i<3 ; i++)
+		for (i = 0; i < 3; i++)
 		{
-			ent->s.origin[i] = pm.s.origin[i]*0.125;
-			ent->velocity[i] = pm.s.velocity[i]*0.125;
+			ent->s.origin[i] = pm.s.origin[i] * 0.125;
+			ent->velocity[i] = pm.s.velocity[i] * 0.125;
 		}
 
-		VectorCopy (pm.mins, ent->mins);
-		VectorCopy (pm.maxs, ent->maxs);
+		VectorCopy(pm.mins, ent->mins);
+		VectorCopy(pm.maxs, ent->maxs);
 
 		client->resp.cmd_angles[0] = SHORT2ANGLE(ucmd->angles[0]);
 		client->resp.cmd_angles[1] = SHORT2ANGLE(ucmd->angles[1]);
@@ -1689,31 +1709,30 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 		}
 		else
 		{
-			VectorCopy (pm.viewangles, client->v_angle);
-			VectorCopy (pm.viewangles, client->ps.viewangles);
+			VectorCopy(pm.viewangles, client->v_angle);
+			VectorCopy(pm.viewangles, client->ps.viewangles);
 		}
 
-		gi.linkentity (ent);
+		gi.linkentity(ent);
 
 		if (ent->movetype != MOVETYPE_NOCLIP)
-			G_TouchTriggers (ent);
+			G_TouchTriggers(ent);
 
 		// touch other objects
-		for (i=0 ; i<pm.numtouch ; i++)
+		for (i = 0; i < pm.numtouch; i++)
 		{
 			other = pm.touchents[i];
-			for (j=0 ; j<i ; j++)
+			for (j = 0; j < i; j++)
 				if (pm.touchents[j] == other)
 					break;
 			if (j != i)
 				continue;	// duplicated
 			if (!other->touch)
 				continue;
-			other->touch (other, ent, NULL, NULL);
+			other->touch(other, ent, NULL, NULL);
 		}
 
 	}
-
 	client->oldbuttons = client->buttons;
 	client->buttons = ucmd->buttons;
 	client->latched_buttons |= client->buttons & ~client->oldbuttons;
@@ -1722,8 +1741,17 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	// monster sighting AI
 	ent->light_level = ucmd->lightlevel;
 
+	/*if (ent->autodmg_cooldwn >= 100) {
+		vec3_t no = { 0 };
+		T_Damage(ent, ent, ent, no, ent->s.origin, no, 1, 0, 0, 0);
+		ent->autodmg_cooldwn = 0;
+	}
+	else
+		ent->autodmg_cooldwn++;
+	*/
+
 	// fire weapon from final position if needed
-	if (client->latched_buttons & BUTTON_ATTACK)
+	if (!ent->opponent && (client->latched_buttons & BUTTON_ATTACK))
 	{
 		if (client->resp.spectator) {
 
@@ -1739,6 +1767,30 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 			client->weapon_thunk = true;
 			Think_Weapon (ent);
 		}
+	}
+	
+	if (client->repeatB < 100) {
+		if (client->repeatB % 20 == 0) {
+			Blaster_Fire(ent, vec3_origin, 5 + ent->client->pers.attackMod, false, EF_BLASTER);
+		}
+		client->repeatB++;
+	}
+
+	if (client->repeatL < 120) {
+		if (client->repeatL % 20 == 0) {
+			weapon_railgun_fire(ent);
+		}
+		client->repeatL++;
+	}
+
+	if (ent->opponent && level.turn % 2 != 0) {
+		Cmd_oppentTurn_f(ent);
+	}
+	else if (ent->opponent && level.post == 0) {
+		Cmd_MainScreen_f(ent);
+		level.post++;
+		if (client->bTimer > 0)
+			client->bTimer--;
 	}
 
 	if (client->resp.spectator) {

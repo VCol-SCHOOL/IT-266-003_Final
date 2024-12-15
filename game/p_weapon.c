@@ -458,6 +458,9 @@ void Weapon_Generic (edict_t *ent, int FRAME_ACTIVATE_LAST, int FRAME_FIRE_LAST,
 				( ent->client->pers.inventory[ent->client->ammo_index] >= ent->client->pers.weapon->quantity))
 			{
 				ent->client->ps.gunframe = FRAME_FIRE_FIRST;
+				//gi.cprintf(ent, PRINT_HIGH, "%d", level.turn);
+				if (level.turn % 2 != 0)
+					return;
 				ent->client->weaponstate = WEAPON_FIRING;
 
 				// start the animation
@@ -725,7 +728,7 @@ void weapon_grenadelauncher_fire (edict_t *ent)
 	VectorScale (forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	fire_grenade (ent, start, forward, damage, 600, 2.5, radius);
+	fire_grenade (ent, start, forward, damage, 300, 2.5, radius);
 
 	gi.WriteByte (svc_muzzleflash);
 	gi.WriteShort (ent-g_edicts);
@@ -818,9 +821,6 @@ void Blaster_Fire (edict_t *ent, vec3_t g_offset, int damage, qboolean hyper, in
 	vec3_t	forward, right;
 	vec3_t	start;
 	vec3_t	offset;
-	
-	float		angle;
-	float		sy, cy, sp, cp;
 
 	vec3_t		from;
 	vec3_t		end;
@@ -840,33 +840,40 @@ void Blaster_Fire (edict_t *ent, vec3_t g_offset, int damage, qboolean hyper, in
 	VectorScale (forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	if (hyper) {
+	if ((ent->client->showdrive && !hyper) || ent->client->repeatB < 100)
 		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
 
-		angle = ent->client->v_angle[PITCH] * (M_PI * 2 / 360);
-		sp = sin(angle + (M_PI) / 180.0F);
-		cp = cos(angle + (M_PI) / 180.0F);
-		angle = ent->client->v_angle[YAW] * (M_PI * 2 / 360);
+	else if (hyper) {
+		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
+		int swipe = rand() % 3;
+		if (swipe == 0)
+			swipe = -1;
+		else if (swipe == 1)
+			swipe = 0;
 
 		VectorNormalize(right);
 		VectorScale(right, 4, right);
 		VectorAdd(start, right, start);
-		sy = sin(angle + ((-5.0F * M_PI) / 180.0F));
-		cy = cos(angle + ((-5.0F * M_PI) / 180.0F));
-		forward[0] = cp * cy;
-		forward[1] = cp * sy;
-		forward[2] = -sp;
-		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
+		right[2] += 2*swipe;
+		fire_blaster(ent, start, forward, damage*0.20, 1000, effect, hyper);
 
 		VectorNormalize(right);
-		VectorScale(right, -8, right);
+		VectorScale(right, 4, right);
 		VectorAdd(start, right, start);
-		sy = sin(angle + ((10.0F * M_PI) / 180.0F));
-		cy = cos(angle + ((10.0F * M_PI) / 180.0F));
-		forward[0] = cp * cy;
-		forward[1] = cp * sy;
-		forward[2] = -sp;
-		fire_blaster(ent, start, forward, damage, 1000, effect, hyper);
+		right[2] += 2 * swipe;
+		fire_blaster(ent, start, forward, damage * 0.20, 1000, effect, hyper);
+
+		VectorNormalize(right);
+		VectorScale(right, -12, right);
+		VectorAdd(start, right, start);
+		right[2] -= 6*swipe;
+		fire_blaster(ent, start, forward, damage*0.20, 1000, effect, hyper);
+
+		VectorNormalize(right);
+		VectorScale(right, -4, right);
+		VectorAdd(start, right, start);
+		right[2] -= 2 * swipe;
+		fire_blaster(ent, start, forward, damage * 0.20, 1000, effect, hyper);
 	}
 	else {
 		VectorMA(start, 8192, forward, end);
@@ -888,9 +895,25 @@ void Blaster_Fire (edict_t *ent, vec3_t g_offset, int damage, qboolean hyper, in
 				ignore = NULL;
 
 				if ((tr.ent != ent) && (tr.ent->takedamage)) {
-					if (tr.ent->svflags & SVF_MONSTER)
-						VectorSet(ent->s.origin, tr.ent->s.origin[0], tr.ent->s.origin[1], tr.ent->s.origin[2]);
-					T_Damage(tr.ent, ent, ent, forward, tr.endpos, tr.plane.normal, 1500, 200, 0, MOD_RAILGUN);
+					if (tr.ent->svflags & SVF_MONSTER) {
+						//VectorSet(ent->s.origin, tr.ent->s.origin[0], tr.ent->s.origin[1], tr.ent->s.origin[2]);
+						if (!ent->freeze)
+						{
+							VectorSet(ent->prevLocationP, ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
+							VectorSet(ent->prevLocationE, tr.ent->s.origin[0], tr.ent->s.origin[1], tr.ent->s.origin[2]);
+							VectorSet(ent->s.origin, -842, 886, 423);
+							VectorSet(tr.ent->s.origin, -512, 886, 408);
+							ent->opponent = tr.ent;
+						}
+						else if (ent->prevLocationP[0])
+						{
+							VectorSet(ent->s.origin, ent->prevLocationP[0], ent->prevLocationP[1], ent->prevLocationP[2]);
+							VectorSet(tr.ent->s.origin, ent->prevLocationE[0], ent->prevLocationE[1], ent->prevLocationE[2]);
+						}
+						tr.ent->freeze = !tr.ent->freeze;
+						ent->freeze = !ent->freeze;
+					}
+					T_Damage(tr.ent, ent, ent, forward, tr.endpos, tr.plane.normal, 0, 200, 0, MOD_RAILGUN);
 				}
 
 			}
@@ -1413,7 +1436,11 @@ void weapon_railgun_fire (edict_t *ent)
 
 	VectorSet(offset, 0, 7,  ent->viewheight-8);
 	P_ProjectSource (ent->client, ent->s.origin, offset, forward, right, start);
-	fire_rail (ent, start, forward, damage, kick);
+	int lnr = (rand() % 11) - 5;
+	int und = (rand() % 11) - 5;
+	start[1] += lnr;
+	start[1] += und;
+	fire_rail (ent, start, forward, 4 + ent->client->pers.attackMod, kick);
 
 	// send muzzle flash
 	gi.WriteByte (svc_muzzleflash);

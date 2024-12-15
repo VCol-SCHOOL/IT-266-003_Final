@@ -338,6 +338,9 @@ typedef struct
 	int			body_que;			// dead bodies
 
 	int			power_cubes;		// ugly necessity for coop
+	//turn counter
+	int turn;
+	int post;
 } level_locals_t;
 
 
@@ -445,6 +448,10 @@ typedef struct
 
 	int			power_armor_type;
 	int			power_armor_power;
+
+	mmove_t *opMove;
+	//stand, aim, and fire
+
 } monsterinfo_t;
 
 
@@ -601,6 +608,7 @@ extern	gitem_t	itemlist[];
 //
 void Cmd_Help_f (edict_t *ent);
 void Cmd_Score_f (edict_t *ent);
+void Cmd_oppentTurn_f(edict_t* ent);
 
 //
 // g_items.c
@@ -862,6 +870,14 @@ typedef struct
 	int			helpchanged;
 
 	qboolean	spectator;			// client is a spectator
+
+	//stats
+	int attackMod;
+	int defenseMod;
+
+	int exp_points; //xp, just give 200 after every enemy
+	int exp_max; //set to 400, level up if reached
+	int lv;
 } client_persistant_t;
 
 // client data that stays across deathmatch respawns
@@ -959,6 +975,19 @@ struct gclient_s
 
 	edict_t		*chase_target;		// player we are chasing
 	qboolean	update_chase;		// need to update chase info?
+
+	qboolean	showmain;
+	qboolean	showdrive;
+	qboolean	showstat;
+	qboolean	slash;
+	int			repeatB;
+	int			repeatL;
+	int			bTimer;
+	int			stunTimer;
+	int			virusTimer;
+	int			weakTimer;
+
+	short		buycode; // 1111 = 15 for all
 };
 
 
@@ -995,6 +1024,8 @@ struct edict_s
 	// EXPECTS THE FIELDS IN THAT ORDER!
 
 	//================================
+	vec3_t prevLocationP;
+	vec3_t prevLocationE;
 	int			movetype;
 	int			flags;
 
@@ -1019,6 +1050,7 @@ struct edict_s
 	char		*deathtarget;
 	char		*combattarget;
 	edict_t		*target_ent;
+	edict_t		*opponent;
 
 	float		speed, accel, decel;
 	vec3_t		movedir;
@@ -1110,5 +1142,6 @@ struct edict_s
 	// common data blocks
 	moveinfo_t		moveinfo;
 	monsterinfo_t	monsterinfo;
-};
 
+	int			autodmg_cooldwn;
+};

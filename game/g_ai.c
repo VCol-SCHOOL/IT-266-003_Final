@@ -107,7 +107,7 @@ void ai_stand (edict_t *self, float dist)
 {
 	vec3_t	v;
 
-	if (dist)
+	if (dist && !self->freeze)
 		M_walkmove (self, self->s.angles[YAW], dist);
 
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
@@ -773,6 +773,9 @@ qboolean ai_checkattack (edict_t *self, float dist)
 	vec3_t		temp;
 	qboolean	hesDeadJim;
 
+	if (self->freeze)
+		printf("%s\n", "found!");
+
 // this causes monsters to run blindly to the combat point w/o firing
 	if (self->goalentity)
 	{
@@ -923,6 +926,9 @@ void ai_run (edict_t *self, float dist)
 	vec3_t		v_forward, v_right;
 	float		left, center, right;
 	vec3_t		left_target, right_target;
+
+	if (self->freeze)
+		return;
 
 	// if we're going to a combat point, just proceed
 	if (self->monsterinfo.aiflags & AI_COMBAT_POINT)

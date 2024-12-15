@@ -486,6 +486,7 @@ void Cmd_Inven_f (edict_t *ent)
 	{
 		gi.WriteShort (cl->pers.inventory[i]);
 	}
+	gi.WriteShort(cl->pers.inventory[i]);
 	gi.unicast (ent, true);
 }
 
@@ -900,10 +901,417 @@ void Cmd_PlayerList_f(edict_t *ent)
 }
 
 void Cmd_RocketJump_f(edict_t* ent) {
-	vec3_t forward = { 0,0,-1 };
+	//vec3_t forward = { 0,0,-1 };
+	vec3_t forward, right, start;
+	AngleVectors(ent->client->v_angle, forward, right, NULL);
 	if (!ent || ent->health <= 0) return;
-	fire_rocket(ent, ent->s.origin, forward, 0, 1000, 100, 50);
 	
+	VectorCopy(ent->s.origin, start);
+	VectorNormalize(right);
+	VectorScale(right, 4, right);
+	VectorAdd(start, right, start);
+	fire_rocket(ent, start, forward, 1000, 1000, 100, 50);
+	VectorNormalize(right);
+	VectorScale(right, -8, right);
+	VectorAdd(start, right, start);
+	fire_rocket(ent, start, forward, 1000, 1000, 100, 50);
+	
+}
+
+void Cmd_findME_f(edict_t* ent) {
+	int x = ent->s.origin[0];
+	int z = ent->s.origin[1];
+	int y = ent->s.origin[2];
+	char msg[50];
+	sprintf(msg, "%d, %d, %d, %f, %f, %f\n", x, z, y, ent->client->v_angle[0], ent->client->v_angle[1], ent->client->v_angle[2]);
+	//sprintf(msg, "%d, %d, %d\n", ent->prevLocationP[0], ent->prevLocationP[1], ent->prevLocationP[2]);
+	gi.cprintf(ent, PRINT_HIGH, "%s", msg);
+	//-842, 408, 886 - player
+	//-512 - enemy -> -0.998672
+	/*ent->s.origin[0] = -842;
+	ent->s.origin[1] = 886;
+	ent->s.origin[2] = 408;*/
+}
+
+void Cmd_MainScreen_f(edict_t* ent)
+{
+	ent->client->showinventory = false; //true
+	ent->client->showscores = false;
+	ent->client->showdrive = false;
+	ent->client->showstat = false;
+
+	if (ent->client->showhelp && (ent->client->pers.game_helpchanged == game.helpchanged) && ent->client->showmain)
+	{
+		ent->client->showhelp = false;
+		return;
+	}
+
+	ent->client->showhelp = true; //false
+	ent->client->showmain = true;
+	ent->client->pers.helpchanged = 0;
+	char	string[1024];
+
+
+	// send the layout
+	Com_sprintf(string, sizeof(string),
+		"xv 32 yv 8 picn inventory "			// background
+		"xv 50 yv 40 string2 \"bullets remaining: %d\" "		// skill
+		"xv 50 yv 50 string2 \"d-revolver:    0, 0 \" "		// level name
+		"xv 50 yv 60 string2 \"k-slash:       10, 1 \" "		// help 1
+		"xv 50 yv 70 string2 \"mchn-blaster:  10, 2\" "		// help 2
+		"xv 50 yv 80 string2 \"hand canon:    15, 3\" "
+		"xv 50 yv 90 string2 \"tesla laser:   15, 4 \" "
+		"xv 50 yv 100 string2 \"time bomb:     10, 5 \" "
+		"xv 50 yv 110 string2 \"the big shot:  15, 6 \" "
+		"xv 50 yv 120 string2 \"mental dart:   10, 7 \" "
+		"xv 50 yv 130 string2 \"dimm-dropper:  15, 8 \" "
+		"xv 50 yv 140 string2 \"g-accelerator: 200, 9 \" ",
+		ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))]);
+
+	gi.WriteByte(svc_layout);
+	gi.WriteString(string);
+	gi.unicast(ent, true);
+}
+void Cmd_DriveScreen_f(edict_t* ent)
+{
+	ent->client->showinventory = false;
+	ent->client->showscores = false;
+	ent->client->showmain = false;
+	ent->client->showstat = false;
+
+	if (ent->client->showhelp && (ent->client->pers.game_helpchanged == game.helpchanged) && ent->client->showdrive)
+	{
+		ent->client->showhelp = false;
+		ent->client->showdrive = false;
+		return;
+	}
+
+	ent->client->showhelp = true;
+	ent->client->showdrive = true;
+	ent->client->pers.helpchanged = 0;
+	char	string[1024];
+
+	Com_sprintf(string, sizeof(string),
+		"xv 32 yv 8 picn inventory "
+		"xv 50 yv 30 string2 \"Select a drive\" "
+		"xv 50 yv 40 string2 \"None: 0, 0\" "
+		"xv 50 yv 50 string2 \"Drain: 5, 1\" "
+		"xv 50 yv 60 string2 \"Boost: 5, 2\" "
+		"xv 50 yv 70 string2 \"Stun: 5, 3\" "
+		"xv 50 yv 80 string2 \"Virus: 5, 4\" "
+		"xv 50 yv 90 string2 \"Luck: 5, 5\" "
+		"xv 50 yv 100 string2 \"Dilute: 5, 6\" ");
+
+	gi.WriteByte(svc_layout);
+	gi.WriteString(string);
+	gi.unicast(ent, true);
+}
+
+void Cmd_StatScreen_f(edict_t* ent)
+{
+	ent->client->showinventory = false;
+	ent->client->showscores = false;
+	ent->client->showmain = false;
+	ent->client->showdrive = false;
+
+	if (ent->client->showhelp && (ent->client->pers.game_helpchanged == game.helpchanged) && ent->client->showstat)
+	{
+		ent->client->showhelp = false;
+		ent->client->showdrive = false;
+		return;
+	}
+
+	ent->client->showhelp = true;
+	ent->client->showstat = true;
+	ent->client->pers.helpchanged = 0;
+	char	string[1024];
+	char	bar[11] = "----------\0";
+
+	int hold = ent->client->pers.exp_points;
+	int ind = 0;
+	while (hold > 0 && ind < 10) {
+		hold -= 40;
+		bar[ind] = 'X';
+		ind++;
+	}
+
+	//stats
+	//attackmod/defensemod, purchasables
+	Com_sprintf(string, sizeof(string),
+		"xv 32 yv 8 picn inventory "
+		"xv 50 yv 30 string2 \"Lv:%d\" "
+		"xv 50 yv 40 string2 \"[%s]:%dpnts\" "
+		"xv 50 yv 50 string2 \"atk: %d\" "
+		"xv 50 yv 60 string2 \"def: %d\" "
+		"xv 50 yv 70 string2 \"bullets: %d\" "
+		"xv 50 yv 90 string2 \"level up: %d, 0\" "
+		"xv 50 yv 100 string2 \"Katana: 100, 1\" "
+		"xv 50 yv 110 string2 \"Hand Cannon: 200, 2\" "
+		"xv 50 yv 120 string2 \"TimeBomb: 200, 3\" "
+		"xv 50 yv 130 string2 \"Gamma Accelerator: 800, 4\" ", ent->client->pers.lv, bar, ent->client->pers.exp_points,
+		ent->client->pers.attackMod, ent->client->pers.defenseMod, ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))], 
+		ent->client->pers.exp_max);
+
+	gi.WriteByte(svc_layout);
+	gi.WriteString(string);
+	gi.unicast(ent, true);
+}
+
+void Cmd_oppentTurn_f(edict_t* ent) {
+	vec3_t view = { -1,-180,0 };
+	vec3_t forward;
+	vec3_t right;
+	int damage = 15;
+
+	if (ent->client->stunTimer > 0) {
+		ent->client->stunTimer--;
+		return;
+	}
+
+	AngleVectors(view, forward, right, NULL);
+
+	level.turn++;
+	level.post = 0;
+	if (ent->client->bTimer > 0)
+		ent->client->bTimer--;
+	if (ent->client->weakTimer > 0) {
+		damage -= 7;
+		ent->client->weakTimer--;
+	}
+	monster_fire_blaster(ent->opponent, ent->opponent->s.origin, forward, damage - ent->client->pers.defenseMod, 500, 39, EF_BLASTER);
+	T_Damage(ent, ent->opponent, ent->opponent, forward, ent->s.origin, vec3_origin, damage, 0, 0, 0); //for now
+	if (ent->client->virusTimer > 0) {
+		T_Damage(ent->opponent, ent, ent, forward, ent->opponent->s.origin, vec3_origin, 5, 0, 0, 0);
+		ent->client->virusTimer--;
+	}
+}
+
+//sudo gui
+void Cmd_selectOP_f(edict_t* ent, int op) {
+	int	m_costs[10] = { 0, 10, 10, 15, 15, 10, 15, 10, 15, 200 };
+	int	d_costs[7] = { 0, 5, 5, 5, 5, 5, 5 };
+	int	s_costs[5] = { ent->client->pers.exp_max, 100, 200, 200, 800 };
+	int stock = ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))];
+	vec3_t forward, right, start;
+	int chance, shot;
+	vec3_t below = { 0, 0, -1 };
+	int damage = 20;
+	int luck;
+
+	if (ent->client->showmain && stock >= m_costs[op]){
+		switch(op)
+		{
+			case 0: //drive-revolver
+				ent->client->slash = false;
+				Cmd_DriveScreen_f(ent);
+				break;
+			case 1: //katana
+				if (!(ent->client->buycode & 1))
+					return;
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				ent->client->slash = true;
+				Cmd_DriveScreen_f(ent);
+				break;
+			case 2: //machine blaster
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				ent->client->repeatB = 0; //weapon fires in clientThink
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				break;
+			case 3: //hand cannon
+				if (!((ent->client->buycode >> 1) & 1))
+					return;
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				AngleVectors(ent->client->v_angle, forward, right, NULL);
+				VectorCopy(ent->s.origin, start);
+
+				VectorNormalize(right);
+				VectorScale(right, 4, right);
+				VectorAdd(start, right, start);
+				fire_rocket(ent, start, forward, 15 + ent->client->pers.attackMod, 1000, 100, 50);
+
+				VectorNormalize(right);
+				VectorScale(right, -8, right);
+				VectorAdd(start, right, start);
+				fire_rocket(ent, start, forward, 15 + ent->client->pers.attackMod, 1000, 100, 50);
+
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			case 4: //tesla laser
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				ent->client->repeatL = 0; //weapon fires in clientThink
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			case 5: //time bomb
+				if (!((ent->client->buycode >> 2) & 1))
+					return;
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				ent->client->bTimer = 4;
+				weapon_grenadelauncher_fire(ent);
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			case 6: //the big shot
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				chance = rand() % 20;
+				shot = (chance == 1) ? 100: 0;
+				AngleVectors(ent->client->v_angle, forward, right, NULL);
+				VectorCopy(ent->s.origin, start);
+				fire_rocket(ent, start, forward, shot, 1000, 100, 50);
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			case 7: //mental dart
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				AngleVectors(ent->client->v_angle, forward, right, NULL);
+				VectorCopy(ent->s.origin, start);
+				fire_blaster(ent, start, forward, 5 + ent->client->pers.attackMod, 100, EF_BLASTER, false);
+				ent->client->weakTimer = 3;
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			case 8: //dimmnesional dropper
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				chance = rand() % 20;
+				VectorCopy(ent->opponent->s.origin, start);
+				start[2] += 180;
+				if(chance == 0)
+					fire_bfg(ent, start, below, 200, 400, 500);
+				else if(chance > 0 && chance < 10)
+					fire_rocket(ent, start, below, 25 + ent->client->pers.attackMod, 100, 100, 50);
+				else
+					fire_blaster(ent, start, below, 5 + ent->client->pers.attackMod, 50, EF_BLASTER, false);
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			case 9: //gamma accelerator
+				if (!((ent->client->buycode >> 3) & 1))
+					return;
+				ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= m_costs[op];
+				AngleVectors(ent->client->v_angle, forward, right, NULL);
+				VectorCopy(ent->s.origin, start);
+				fire_bfg(ent, start, forward, 200, 400, 500);
+				ent->client->showhelp = false;
+				ent->client->showmain = false;
+				level.turn++;
+				break;
+			default: break;
+		}
+	}
+	else if (ent->client->showdrive && op < 6 && stock >= d_costs[op]){
+		ent->client->pers.inventory[ITEM_INDEX(FindItem("Bullets"))] -= d_costs[op];
+		switch(op)
+		{
+			case 0: //none
+				Blaster_Fire(ent, vec3_origin, damage + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			case 1: //drain
+				Blaster_Fire(ent, vec3_origin, damage + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				ent->health += 10;
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			case 2: //boost
+				Blaster_Fire(ent, vec3_origin, damage+10 + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			case 3: //stun
+				Blaster_Fire(ent, vec3_origin, damage + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				if(ent->client->stunTimer == 0)
+					ent->client->stunTimer = 3;
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			case 4: //virus
+				Blaster_Fire(ent, vec3_origin, damage + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				if (ent->client->virusTimer == 0)
+					ent->client->virusTimer = 3;
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			case 5: //luck
+				luck = rand() % 5;
+				if (luck == 4)
+					damage *= 5;
+				Blaster_Fire(ent, vec3_origin, damage + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			case 6: //dilute
+				Blaster_Fire(ent, vec3_origin, damage + ent->client->pers.attackMod, ent->client->slash, EF_BLASTER);
+				ent->client->weakTimer = 1;
+				ent->client->showhelp = false;
+				ent->client->showdrive = false;
+				level.turn++;
+				break;
+			default: break;
+		}
+	}
+	else if(ent->client->showstat && op < 5 && stock >= d_costs[op]){ //go to stats screen
+		if (op > 0 && ((ent->client->buycode >> (op-1)) & 1))
+			return;
+		ent->client->pers.exp_points -= s_costs[op];
+		switch (op)
+		{
+			case 0: //level up
+				ent->client->pers.lv++;
+				ent->client->pers.exp_max += 200;
+				ent->client->pers.attackMod += 1;
+				ent->client->pers.defenseMod += 1;
+				ent->client->showhelp = false;
+				ent->client->showstat = false;
+				break;
+			case 1: //buy katana
+				ent->client->buycode |= 1; //0001
+				ent->client->showhelp = false;
+				ent->client->showstat = false;
+				break;
+			case 2: //buy hand cannon
+				ent->client->buycode |= 2; //0010
+				ent->client->showhelp = false;
+				ent->client->showstat = false;
+				break;
+			case 3: //buy time bomb
+				ent->client->buycode |= 4; //0100
+				ent->client->showhelp = false;
+				ent->client->showstat = false;
+				break;
+			case 4: //buy gamma accelerator //1000
+				ent->client->buycode |= 8;
+				ent->client->showhelp = false;
+				ent->client->showstat = false;
+				break;
+			default: break;
+		}
+	}
+}
+
+Cmd_buyall_f(edict_t* ent) {
+	ent->client->buycode = 15;
+}
+
+Cmd_lvUp_f(edict_t* ent) {
+	ent->client->pers.lv++;
+	ent->client->pers.exp_max += 200;
+	ent->client->pers.attackMod += 1;
+	ent->client->pers.defenseMod += 1;
 }
 
 /*
@@ -941,8 +1349,23 @@ void ClientCommand (edict_t *ent)
 		return;
 	}
 	if (Q_stricmp (cmd, "help") == 0)
-	{
+	{	
 		Cmd_Help_f (ent);
+		return;
+	}
+	if (Q_stricmp(cmd, "emer") == 0)
+	{
+		Cmd_MainScreen_f(ent);
+		return;
+	}
+	if (Q_stricmp(cmd, "buyall") == 0)
+	{
+		Cmd_buyall_f(ent);
+		return;
+	}
+	if (Q_stricmp(cmd, "lvup") == 0)
+	{
+		Cmd_lvUp_f(ent);
 		return;
 	}
 
@@ -962,7 +1385,7 @@ void ClientCommand (edict_t *ent)
 	else if (Q_stricmp (cmd, "noclip") == 0)
 		Cmd_Noclip_f (ent);
 	else if (Q_stricmp (cmd, "inven") == 0)
-		Cmd_Inven_f (ent);
+		Cmd_StatScreen_f (ent);
 	else if (Q_stricmp (cmd, "invnext") == 0)
 		SelectNextItem (ent, -1);
 	else if (Q_stricmp (cmd, "invprev") == 0)
@@ -995,6 +1418,30 @@ void ClientCommand (edict_t *ent)
 		Cmd_PlayerList_f(ent);
 	else if (Q_stricmp(cmd, "rocketjump") == 0)
 		Cmd_RocketJump_f(ent);
+	else if (Q_stricmp(cmd, "findME") == 0)
+		Cmd_findME_f(ent);
+	
+	else if (Q_stricmp(cmd, "w0") == 0)
+		Cmd_selectOP_f(ent, 0);
+	else if (Q_stricmp(cmd, "w1") == 0)
+		Cmd_selectOP_f(ent, 1);
+	else if (Q_stricmp(cmd, "w2") == 0)
+		Cmd_selectOP_f(ent, 2);
+	else if (Q_stricmp(cmd, "w3") == 0)
+		Cmd_selectOP_f(ent, 3);
+	else if (Q_stricmp(cmd, "w4") == 0)
+		Cmd_selectOP_f(ent, 4);
+	else if (Q_stricmp(cmd, "w5") == 0)
+		Cmd_selectOP_f(ent, 5);
+	else if (Q_stricmp(cmd, "w6") == 0)
+		Cmd_selectOP_f(ent, 6);
+	else if (Q_stricmp(cmd, "w7") == 0)
+		Cmd_selectOP_f(ent, 7);
+	else if (Q_stricmp(cmd, "w8") == 0)
+		Cmd_selectOP_f(ent, 8);
+	else if (Q_stricmp(cmd, "w9") == 0)
+		Cmd_selectOP_f(ent, 9);
+	
 	else	// anything that doesn't match a command will be a chat
 		Cmd_Say_f (ent, false, true);
 }

@@ -408,8 +408,8 @@ void T_Damage (edict_t *targ, edict_t *inflictor, edict_t *attacker, vec3_t dir,
 		if (!damage)
 			damage = 1;
 	}
-	if (targ == attacker)
-		damage = 0;
+	//if (targ == attacker)
+		//damage = 0;
 
 	client = targ->client;
 
@@ -498,6 +498,22 @@ void T_Damage (edict_t *targ, edict_t *inflictor, edict_t *attacker, vec3_t dir,
 			
 		if (targ->health <= 0)
 		{
+			if (targ == attacker->opponent) {
+				gitem_t* item;
+
+				VectorSet(attacker->s.origin, attacker->prevLocationP[0], attacker->prevLocationP[1], attacker->prevLocationP[2]+5);
+				attacker->opponent = NULL;
+				attacker->freeze = false;
+				level.turn = 0;
+				attacker->client->pers.exp_points += 200;
+			
+				item = FindItem("Bullets");
+				Add_Ammo(attacker, item, 25);
+				attacker->client->showhelp = false;
+				attacker->client->showmain = false;
+				attacker->client->showdrive = false;
+
+			}
 			if ((targ->svflags & SVF_MONSTER) || (client))
 				targ->flags |= FL_NO_KNOCKBACK;
 			Killed (targ, inflictor, attacker, take, point);
